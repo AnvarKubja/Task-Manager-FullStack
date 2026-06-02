@@ -1,159 +1,170 @@
 import { useEffect, useState } from "react";
 import {
-    getTasks,
-    createTask,
-    updateTask,
-    deleteTask,
+  createTask,
+  deleteTask,
+  getTasks,
+  updateTask,
 } from "./services/taskService";
 import "./App.css";
 
 const emptyForm = {
-    title: "",
-    description: "",
-    priority: "Medium",
-    status: "Pending",
-    dueDate: "",
+  title: "",
+  description: "",
+  priority: "Medium",
+  status: "Pending",
+  dueDate: "",
 };
 
 function App() {
-    const [tasks, setTasks] = useState([]);
-    const [form, setForm] = useState(emptyForm);
-    const [editingId, setEditingId] = useState(null);
-    const [message, setMessage] = useState("");
-    const [error, setError] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
-    useEffect(() => {
-        loadTasks();
-    }, []);
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
-    async function loadTasks() {
-        try {
-            const data = await getTasks();
-            setTasks(data);
-        } catch {
-            setError("Ülesannete laadimine ebaõnnestus");
-        }
+  async function loadTasks() {
+    try {
+      const data = await getTasks();
+      setTasks(data);
+    } catch {
+      setError("Ülesannete laadimine ebaõnnestus");
     }
+  }
 
-    function handleChange(event) {
-        setForm({
-            ...form,
-            [event.target.name]: event.target.value,
-        });
+  function handleChange(event) {
+    setForm({
+      ...form,
+      [event.target.name]: event.target.value,
+    });
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+
+    try {
+      const taskData = {
+        ...form,
+        dueDate: new Date(form.dueDate).toISOString(),
+      };
+
+      if (editingId) {
+        await updateTask(editingId, taskData);
+        setMessage("Ülesanne muudeti edukalt");
+      } else {
+        await createTask(taskData);
+        setMessage("Ülesanne lisati edukalt");
+      }
+
+      setForm(emptyForm);
+      setEditingId(null);
+      await loadTasks();
+    } catch {
+      setError("Salvestamine ebaõnnestus");
     }
+  }
 
-    async function handleSubmit(event) {
-        event.preventDefault();
-        setError("");
-        setMessage("");
+  function startEdit(task) {
+    setEditingId(task.id);
+    setForm({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate.slice(0, 10),
+    });
+  }
 
-        try {
-            const taskData = {
-                ...form,
-                dueDate: new Date(form.dueDate).toISOString(),
-            };
+  async function handleDelete(id) {
+    setError("");
+    setMessage("");
 
-            if (editingId) {
-                await updateTask(editingId, taskData);
-                setMessage("Ülesanne muudeti edukalt");
-            } else {
-                await createTask(taskData);
-                setMessage("Ülesanne lisati edukalt");
-            }
-
-            setForm(emptyForm);
-            setEditingId(null);
-            await loadTasks();
-        } catch {
-            setError("Salvestamine ebaõnnestus");
-        }
+    try {
+      await deleteTask(id);
+      setMessage("Ülesanne kustutati");
+      await loadTasks();
+    } catch {
+      setError("Kustutamine ebaõnnestus");
     }
+  }
 
-    function startEdit(task) {
-        setEditingId(task.id);
-        setForm({
-            title: task.title,
-            description: task.description,
-            priority: task.priority,
-            status: task.status,
-            dueDate: task.dueDate.slice(0, 10),
-        });
-    }
+  return (
+    <main className="app">
+      <h1>Task Manager</h1>
 
-    async function handleDelete(id) {
-        try {
-            await deleteTask(id);
-            setMessage("Ülesanne kustutati");
-            await loadTasks();
-        } catch {
-            setError("Kustutamine ebaõnnestus");
-        }
-    }
+      {message && <p className="success">{message}</p>}
+      {error && <p className="error">{error}</p>}
 
-    return (
-        <main className="app">
-            <h1>Task Manager</h1>
+      <form onSubmit={handleSubmit} className="task-form">
+        <input
+          name="title"
+          placeholder="Pealkiri"
+          value={form.title}
+          onChange={handleChange}
+          required
+        />
 
-            {message && <p className="success">{message}</p>}
-            {error && <p className="error">{error}</p>}
+        <textarea
+          name="description"
+          placeholder="Kirjeldus"
+          value={form.description}
+          onChange={handleChange}
+        />
 
-            <form onSubmit={handleSubmit} className="task-form">
-                <input
-                    name="title"
-                    placeholder="Pealkiri"
-                    value={form.title}
-                    onChange={handleChange}
-                    required
-                />
+        <select name="priority" value={form.priority} onChange={handleChange}>
+          <option value="Low">Madal</option>
+          <option value="Medium">Keskmine</option>
+          <option value="High">Kõrge</option>
+        </select>
 
-                <textarea
-                    name="description"
-                    placeholder="Kirjeldus"
-                    value={form.description}
-                    onChange={handleChange}
-                />
+        <select name="status" value={form.status} onChange={handleChange}>
+          <option value="Pending">Ootel</option>
+          <option value="InProgress">Töös</option>
+          <option value="Done">Valmis</option>
+        </select>
 
-                <select name="priority" value={form.priority} onChange={handleChange}>
-                    <option value="Low">Madal</option>
-                    <option value="Medium">Keskmine</option>
-                    <option value="High">Kõrge</option>
-                </select>
+        <input
+          type="date"
+          name="dueDate"
+          value={form.dueDate}
+          onChange={handleChange}
+          required
+        />
 
-                <select name="status" value={form.status} onChange={handleChange}>
-                    <option value="Pending">Ootel</option>
-                    <option value="InProgress">Töös</option>
-                    <option value="Done">Valmis</option>
-                </select>
+        <button type="submit">
+          {editingId ? "Salvesta muudatused" : "Lisa ülesanne"}
+        </button>
+      </form>
 
-                <input
-                    type="date"
-                    name="dueDate"
-                    value={form.dueDate}
-                    onChange={handleChange}
-                    required
-                />
+      {tasks.length === 0 ? (
+        <p className="empty-state">Ühtegi ülesannet ei ole veel lisatud.</p>
+      ) : (
+        <section className="task-list">
+          {tasks.map((task) => (
+            <article key={task.id} className="task-card">
+              <h2>{task.title}</h2>
+              <p>{task.description}</p>
+              <p>Prioriteet: {task.priority}</p>
+              <p>Staatus: {task.status}</p>
+              <p>Tähtaeg: {new Date(task.dueDate).toLocaleDateString()}</p>
 
-                <button type="submit">
-                    {editingId ? "Salvesta muudatused" : "Lisa ülesanne"}
-                </button>
-            </form>
-
-            <section className="task-list">
-                {tasks.map((task) => (
-                    <article key={task.id} className="task-card">
-                        <h2>{task.title}</h2>
-                        <p>{task.description}</p>
-                        <p>Prioriteet: {task.priority}</p>
-                        <p>Staatus: {task.status}</p>
-                        <p>Tähtaeg: {new Date(task.dueDate).toLocaleDateString()}</p>
-
-                        <button onClick={() => startEdit(task)}>Muuda</button>
-                        <button onClick={() => handleDelete(task.id)}>Kustuta</button>
-                    </article>
-                ))}
-            </section>
-        </main>
-    );
+              <button type="button" onClick={() => startEdit(task)}>
+                Muuda
+              </button>
+              <button type="button" onClick={() => handleDelete(task.id)}>
+                Kustuta
+              </button>
+            </article>
+          ))}
+        </section>
+      )}
+    </main>
+  );
 }
 
 export default App;
